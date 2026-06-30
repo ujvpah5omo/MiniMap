@@ -221,6 +221,10 @@ function MiniMapWidget:EnableMinimapUpdating()
 			self.task_ups:Cancel()
 			self.task_ups = nil
 		end
+		-- A cancelled zero-delay stop task may have left the renderer visible.
+		if self.minimap:IsVisible() then
+			self.minimap:ToggleVisibility()
+		end
 		self:ScheduleUpdate()
 	else
 		-- ups throttling disabled
@@ -237,11 +241,12 @@ function MiniMapWidget:DisableMinimapUpdating()
 			self.task_ups:Cancel()
 			self.task_ups = nil
 		end
-	else
-		-- ups throttling disabled
-		if self.minimap:IsVisible() then
-			self.minimap:ToggleVisibility()
-		end
+	end
+
+	-- Always leave the shared renderer off. In throttled mode it can be visible
+	-- for one frame while the zero-delay stop task is pending.
+	if self.minimap:IsVisible() then
+		self.minimap:ToggleVisibility()
 	end
 end
 
