@@ -213,6 +213,12 @@ function MiniMapWidget:IsMinimapUpdating()
 	end
 end
 
+function MiniMapWidget:SetRendererVisible(visible)
+	if self.minimap:IsVisible() ~= visible then
+		self.minimap:ToggleVisibility()
+	end
+end
+
 function MiniMapWidget:EnableMinimapUpdating()
 	if self.ups > 0 then
 		-- ups throttling enabled
@@ -222,15 +228,11 @@ function MiniMapWidget:EnableMinimapUpdating()
 			self.task_ups = nil
 		end
 		-- A cancelled zero-delay stop task may have left the renderer visible.
-		if self.minimap:IsVisible() then
-			self.minimap:ToggleVisibility()
-		end
+		self:SetRendererVisible(false)
 		self:ScheduleUpdate()
 	else
 		-- ups throttling disabled
-		if not self.minimap:IsVisible() then
-			self.minimap:ToggleVisibility()
-		end
+		self:SetRendererVisible(true)
 	end
 end
 
@@ -245,18 +247,14 @@ function MiniMapWidget:DisableMinimapUpdating()
 
 	-- Always leave the shared renderer off. In throttled mode it can be visible
 	-- for one frame while the zero-delay stop task is pending.
-	if self.minimap:IsVisible() then
-		self.minimap:ToggleVisibility()
-	end
+	self:SetRendererVisible(false)
 end
 
 -- schedule task starting minimap updating
 -- assumes ups throttling is enabled
 function MiniMapWidget:ScheduleUpdate()
 	self.task_ups = self.inst:DoTaskInTime(self.ups, function()
-		if not self.minimap:IsVisible() then
-			self.minimap:ToggleVisibility()
-		end
+		self:SetRendererVisible(true)
 		self:StopUpdatingAndReschedule()
 	end)
 end
@@ -265,9 +263,7 @@ end
 -- assumes ups throttling is enabled
 function MiniMapWidget:StopUpdatingAndReschedule()
 	self.task_ups = self.inst:DoTaskInTime(0, function()
-		if self.minimap:IsVisible() then
-			self.minimap:ToggleVisibility()
-		end
+		self:SetRendererVisible(false)
 		self:ScheduleUpdate()
 	end)
 end

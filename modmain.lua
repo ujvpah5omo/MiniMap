@@ -67,8 +67,22 @@ local function PositionMiniMap(controls, screensize)
 	)
 end
 
--- holds the minimap widget once its added to the controls widget
-local minimap_small = nil
+local function IsMiniMapWidgetValid(minimap)
+	return minimap ~= nil
+		and minimap.inst ~= nil
+		and minimap.inst:IsValid()
+end
+
+local function GetCurrentMiniMapWidget()
+	local player = GLOBAL.ThePlayer
+	local hud = player ~= nil and player.HUD or nil
+	local controls = hud ~= nil and hud.controls or nil
+	local minimap = controls ~= nil and controls.minimap_small or nil
+
+	if IsMiniMapWidgetValid(minimap) then
+		return minimap
+	end
+end
 
 -- create a minimap widget as a child of the controls widget
 local function AddMiniMap(controls)
@@ -76,6 +90,13 @@ local function AddMiniMap(controls)
 	-- for some reason, without this the game would crash without an error when calling controls.topright_root:AddChild
 	-- too lazy to track down the cause, so just using this workaround
 	controls.inst:DoTaskInTime( 0, function()
+		if controls == nil
+			or controls.inst == nil
+			or not controls.inst:IsValid()
+			or controls.top_root == nil
+			or IsMiniMapWidgetValid(controls.minimap_small) then
+			return
+		end
 
 		-- add the minimap widget and set its position
 		local MiniMapWidget = require "widgets/minimapwidget"
@@ -108,12 +129,17 @@ local function AddMiniMap(controls)
 			end
 
 			controls[method_name] = function(self, ...)
+				local minimap = self.minimap_small
+				if not IsMiniMapWidgetValid(minimap) then
+					return base(self, ...)
+				end
+
 				local map_was_open = self.owner ~= nil
 					and self.owner.HUD ~= nil
 					and self.owner.HUD:IsMapScreenOpen()
 
-				if not map_was_open and self.minimap_small:IsVisible() then
-					self.minimap_small:Hide()
+				if not map_was_open and minimap:IsVisible() then
+					minimap:Hide()
 				end
 
 				local returnValues = {base(self, ...)}
@@ -121,8 +147,8 @@ local function AddMiniMap(controls)
 					and self.owner.HUD ~= nil
 					and self.owner.HUD:IsMapScreenOpen()
 
-				if not map_is_open and not self.minimap_small:IsVisible() then
-					self.minimap_small:Show()
+				if not map_is_open and not minimap:IsVisible() then
+					minimap:Show()
 				end
 
 				return unpack(returnValues)
@@ -134,9 +160,6 @@ local function AddMiniMap(controls)
 		WrapMapMethod("HideMap")
 
 		controls.minimap_small:SetUPS(ups)
-
-		minimap_small = controls.minimap_small
-
 	end)
 
 end
@@ -150,10 +173,10 @@ local MapScreen = require "screens/mapscreen"
 local MapScreen_OnDestroy_base = MapScreen.OnDestroy
 MapScreen.OnDestroy = function(self, ...)
 	local controls = self.owner ~= nil and self.owner.HUD ~= nil and self.owner.HUD.controls or nil
-	local current_minimap = controls ~= nil and controls.minimap_small or nil
+	local current_minimap = controls ~= nil and controls.minimap_small or GetCurrentMiniMapWidget()
 	local returnValues = {MapScreen_OnDestroy_base(self, ...)}
 
-	if current_minimap ~= nil and current_minimap.inst:IsValid() then
+	if IsMiniMapWidgetValid(current_minimap) then
 		current_minimap:Show()
 	end
 
@@ -166,8 +189,9 @@ local MapWidget = require "widgets/mapwidget"
 local MapWidget_OnZoomIn_base = MapWidget.OnZoomIn
 MapWidget.OnZoomIn = function(self, deltazoom, ...)
 	local returnValues = {MapWidget_OnZoomIn_base( self, deltazoom, ... )}
-	if minimap_small and self.shown then
-		minimap_small.mapscreenzoom = self.minimap:GetZoom()
+	local current_minimap = GetCurrentMiniMapWidget()
+	if current_minimap ~= nil and self.shown then
+		current_minimap.mapscreenzoom = self.minimap:GetZoom()
 	end
 	return unpack(returnValues)
 end
@@ -175,8 +199,9 @@ end
 local MapWidget_OnZoomOut_base = MapWidget.OnZoomOut
 MapWidget.OnZoomOut = function(self, deltazoom, ...)
 	local returnValues = {MapWidget_OnZoomOut_base( self, deltazoom, ... )}
-	if minimap_small and self.shown then
-		minimap_small.mapscreenzoom = self.minimap:GetZoom()
+	local current_minimap = GetCurrentMiniMapWidget()
+	if current_minimap ~= nil and self.shown then
+		current_minimap.mapscreenzoom = self.minimap:GetZoom()
 	end
 	return unpack(returnValues)
 end
