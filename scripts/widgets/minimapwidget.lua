@@ -2,6 +2,8 @@ local Widget = require "widgets/widget"
 local Image = require "widgets/image"
 local ImageButton = require "widgets/imagebutton"
 
+local ZOOM_STATE_PREFIX = "minimap_hud_zoom_state_"
+
 local MiniMapWidget = Class(Widget, function(self, mapscale, ultrawide)
     Widget._ctor(self, "MiniMapWidget")
 	self.owner = ThePlayer
@@ -45,7 +47,7 @@ local MiniMapWidget = Class(Widget, function(self, mapscale, ultrawide)
 	self.minimapzoom = 0
 	self.lastpos = nil
 	self.uvscale = 1
-    
+
 	--self.minimap:ResetOffset()	
 	self:StartUpdating()
 	self:Show()
@@ -123,6 +125,60 @@ function MiniMapWidget:SetTextureHandle(handle)
 	self.img.inst.ImageWidget:SetTextureHandle( handle )
 end
 
+function MiniMapWidget:GetWorldZoomKey()
+	if TheWorld ~= nil
+		and (TheWorld.worldprefab == "cave" or TheWorld:HasTag("cave")) then
+		return "cave"
+	end
+
+	return "forest"
+end
+
+function MiniMapWidget:GetWorldZoomStateFile()
+	return ZOOM_STATE_PREFIX..self:GetWorldZoomKey()
+end
+
+function MiniMapWidget:ApplyZoomState()
+	self.img:SetUVScale(self.uvscale, self.uvscale)
+	self.minimap:Zoom(self.minimapzoom - self.minimap:GetZoom())
+end
+
+function MiniMapWidget:SaveWorldZoomState()
+	TheSim:SetPersistentString(
+		self:GetWorldZoomStateFile(),
+		string.format("%s,%s,%s", tostring(self.minimapzoom), tostring(self.mapscreenzoom), tostring(self.uvscale)),
+		false
+	)
+end
+
+function MiniMapWidget:LoadWorldZoomState(skip_apply)
+	self.mapscreenzoom = 1
+	self.minimapzoom = 0
+	self.uvscale = 1
+
+	TheSim:GetPersistentString(self:GetWorldZoomStateFile(), function(load_success, data)
+		if self.inst == nil or not self.inst:IsValid() then
+			return
+		end
+
+		if load_success and data ~= nil then
+			local minimapzoom, mapscreenzoom, uvscale = string.match(data, "^([^,]+),([^,]+),([^,]+)$")
+			self.minimapzoom = tonumber(minimapzoom) or self.minimapzoom
+			self.mapscreenzoom = tonumber(mapscreenzoom) or self.mapscreenzoom
+			self.uvscale = tonumber(uvscale) or self.uvscale
+		end
+
+		if not skip_apply then
+			self:ApplyZoomState()
+		end
+	end)
+end
+
+function MiniMapWidget:SetMapScreenZoom(zoom)
+	self.mapscreenzoom = zoom
+	self:SaveWorldZoomState()
+end
+
 function MiniMapWidget:OnZoomIn(  )
     if self.shown then
         if self.minimapzoom == 0 then
@@ -131,9 +187,10 @@ function MiniMapWidget:OnZoomIn(  )
         self.img:SetUVScale(self.uvscale, self.uvscale)
         self.minimap:Zoom( -1 )
         self.minimapzoom = math.max(0,self.minimapzoom-1)
+        self:SaveWorldZoomState()
     end
 end
- 
+
 function MiniMapWidget:OnZoomOut( )
     if self.shown then
         local dozoom = true
@@ -150,6 +207,7 @@ function MiniMapWidget:OnZoomOut( )
             self.minimap:Zoom( 1 )
             self.minimapzoom = self.minimapzoom+1
         end
+        self:SaveWorldZoomState()
     end
 end
 
@@ -186,11 +244,12 @@ function MiniMapWidget:OnShow()
 	if self:IsOpen() then
 		self:EnableMinimapUpdating()
 	end
-	self.minimap:Zoom(self.minimapzoom - self.minimap:GetZoom())
+	self:LoadWorldZoomState()
 	self.minimap:ResetOffset()
 end
 
 function MiniMapWidget:OnHide()
+	self:SaveWorldZoomState()
 	self:DisableMinimapUpdating()
 	self.minimap:Zoom(self.mapscreenzoom - self.minimap:GetZoom())
 end

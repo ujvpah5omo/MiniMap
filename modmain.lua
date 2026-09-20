@@ -191,7 +191,7 @@ MapWidget.OnZoomIn = function(self, deltazoom, ...)
 	local returnValues = {MapWidget_OnZoomIn_base( self, deltazoom, ... )}
 	local current_minimap = GetCurrentMiniMapWidget()
 	if current_minimap ~= nil and self.shown then
-		current_minimap.mapscreenzoom = self.minimap:GetZoom()
+		current_minimap:SetMapScreenZoom(self.minimap:GetZoom())
 	end
 	return unpack(returnValues)
 end
@@ -201,7 +201,7 @@ MapWidget.OnZoomOut = function(self, deltazoom, ...)
 	local returnValues = {MapWidget_OnZoomOut_base( self, deltazoom, ... )}
 	local current_minimap = GetCurrentMiniMapWidget()
 	if current_minimap ~= nil and self.shown then
-		current_minimap.mapscreenzoom = self.minimap:GetZoom()
+		current_minimap:SetMapScreenZoom(self.minimap:GetZoom())
 	end
 	return unpack(returnValues)
 end

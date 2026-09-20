@@ -1,7 +1,7 @@
 name = "Minimap HUD"
 description = "Adds a minimap to the HUD"
 author = "Codex"
-version = "1.1.1"
+version = "1.1.2"
 dst_compatible = true
 client_only_mod = false
 all_clients_require_mod = true
