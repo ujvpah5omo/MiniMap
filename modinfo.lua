@@ -21,8 +21,10 @@ description = T(
     "Steam 创意工坊："..WORKSHOP_URL
 )
 author = "Codex"
-version = "1.1.3"
+version = "1.1.4"
 forumthread = WORKSHOP_URL
+icon_atlas = "modicon.xml"
+icon = "modicon.tex"
 
 api_version = 10
 api_version_dst = 10
